@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+{% block title %}{{ quest.title }}{% endblock %}
+{% block content %}
+<div class="detail">
+    <div class="detail-left">
+        {% if quest.image_path %}
+        <img src="/static/{{ quest.image_path }}" alt="{{ quest.title }}" class="detail-image">
+        {% else %}
+        <div class="detail-placeholder"></div>
+        {% endif %}
+    </div>
+    <div class="detail-right">
+        <h1>{{ quest.title }}</h1>
+        <p class="meta">{{ quest.genre }} • {{ quest.difficulty }} • Уровень страха: {{ '★' * quest.fear_level }}{{ '☆' * (5 - quest.fear_level) }}</p>
+        <p><strong>Описание:</strong> {{ quest.description }}</p>
+        <p><strong>Количество игроков:</strong> {{ quest.players }} человек</p>
+
+        <hr>
+
+        <!-- Кнопки управления для админа -->
+        {% if user and user.is_admin %}
+        <div class="admin-actions" style="margin: 20px 0;">
+            <a href="/admin/edit/{{ quest.id }}" class="btn outline">Редактировать квест</a>
+            <form action="/admin/delete/{{ quest.id }}" method="post" style="display: inline-block; margin-left: 10px;">
+                <button type="submit" class="btn danger" onclick="return confirm('Вы уверены, что хотите удалить этот квест?')">Удалить квест</button>
+            </form>
+        </div>
+        <hr>
+        {% endif %}
+
+        <h3>Бронирование</h3>
+        {% if user %}
+        <form id="booking-form" method="post" action="/book">
+            <input type="hidden" name="quest_id" value="{{ quest.id }}">
+
+            <label>Выберите дату:
+                <input type="date" name="date" required min="{{ now().strftime('%Y-%m-%d') }}">
+            </label>
+
+            <div style="margin: 15px 0;">
+                <strong>Выберите время:</strong>
+                <div class="timeslots" style="margin-top: 10px;">
+                    {% set timeslots = ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00'] %}
+                    {% for slot in timeslots %}
+                        <button type="button" class="slot" data-time="{{ slot }}">{{ slot }}</button>
+                    {% endfor %}
+                </div>
+                <input type="hidden" name="timeslot" id="timeslot-input" value="" required>
+            </div>
+
+            <button id="book-btn" class="btn" type="submit">Забронировать</button>
+        </form>
+        <div id="booking-result" style="margin-top: 15px;"></div>
+        {% else %}
+        <div class="alert">
+            <p>Чтобы забронировать квест, <a href="/login">войдите</a> или <a href="/register">зарегистрируйтесь</a>.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.detail {
+    display: flex;
+    gap: 30px;
+    margin-top: 20px;
+}
+
+.detail-left {
+    flex: 0 0 400px;
+}
+
+.detail-right {
+    flex: 1;
+}
+
+.detail-image {
+    width: 100%;
+    height: 300px;
+    object-fit: cover;
+    border-radius: 12px;
+}
+
+.detail-placeholder {
+    width: 100%;
+    height: 300px;
+    background: var(--card);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+}
+
+.slot {
+    background: var(--panel);
+    border: 1px solid #39417b;
+    color: #dfe6ff;
+    padding: 10px 15px;
+    margin: 5px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.slot:hover {
+    background: #1b2244;
+}
+
+.slot.selected {
+    background: var(--btn);
+    border-color: var(--btn);
+}
+
+.slot.disabled {
+    background: #2a2a2a;
+    color: #666;
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.admin-actions {
+    padding: 15px;
+    background: var(--panel);
+    border-radius: 8px;
+}
+
+input[type="date"] {
+    background: var(--panel);
+    border: 1px solid #39417b;
+    color: #dfe6ff;
+    padding: 8px;
+    border-radius: 6px;
+    margin-left: 10px;
+}
+
+label {
+    display: flex;
+    align-items: center;
+    margin: 15px 0;
+}
+
+.alert {
+    background: var(--panel);
+    border: 1px solid #39417b;
+    padding: 15px;
+    border-radius: 8px;
+    color: #a0a7e6;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const bookingForm = document.getElementById('booking-form');
+    if (!bookingForm) return;
+
+    const slots = bookingForm.querySelectorAll('.slot');
+    const timeslotInput = document.getElementById('timeslot-input');
+    const dateInput = bookingForm.querySelector('input[name="date"]');
+
+    // Блокировка прошедших дат
+    const today = new Date().toISOString().split('T')[0];
+    dateInput.min = today;
+
+    // Обработка выбора времени
+    slots.forEach(slot => {
+        slot.addEventListener('click', function() {
+            if (this.classList.contains('disabled')) return;
+
+            slots.forEach(s => s.classList.remove('selected'));
+            this.classList.add('selected');
+            timeslotInput.value = this.getAttribute('data-time');
+        });
+    });
+
+    // Проверка доступности слотов при изменении даты
+    dateInput.addEventListener('change', function() {
+        checkAvailableSlots();
+    });
+
+    // Отправка формы бронирования
+    bookingForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        if (!timeslotInput.value) {
+            alert('Пожалуйста, выберите время');
+            return;
+        }
+
+        const bookBtn = document.getElementById('book-btn');
+        const resultDiv = document.getElementById('booking-result');
+
+        bookBtn.disabled = true;
+        bookBtn.textContent = 'Бронируем...';
+
+        try {
+            const formData = new FormData(bookingForm);
+            const response = await fetch('/book', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                resultDiv.innerHTML = `<div style="color: lightgreen; padding: 10px; background: #1a3a1a; border-radius: 6px;">✅ ${result.message}</div>`;
+                bookingForm.reset();
+                slots.forEach(s => s.classList.remove('selected'));
+                timeslotInput.value = '';
+                checkAvailableSlots(); // Обновляем доступные слоты
+
+                // Обновляем страницу через 2 секунды
+                setTimeout(() => {
+                    window.location.href = '/my-bookings';
+                }, 2000);
+            } else {
+                resultDiv.innerHTML = `<div style="color: lightpink; padding: 10px; background: #3a1a1a; border-radius: 6px;">❌ ${result.message}</div>`;
+            }
+        } catch (error) {
+            resultDiv.innerHTML = `<div style="color: lightpink; padding: 10px; background: #3a1a1a; border-radius: 6px;">❌ Ошибка сети</div>`;
+        } finally {
+            bookBtn.disabled = false;
+            bookBtn.textContent = 'Забронировать';
+        }
+    });
+
+    // Функция проверки доступных слотов
+    async function checkAvailableSlots() {
+        const date = dateInput.value;
+        if (!date) return;
+
+        try {
+            const response = await fetch(`/api/available-slots?quest_id={{ quest.id }}&date=${date}`);
+            const bookedSlots = await response.json();
+
+            slots.forEach(slot => {
+                const slotTime = slot.getAttribute('data-time');
+                if (bookedSlots.includes(slotTime)) {
+                    slot.classList.add('disabled');
+                    slot.classList.remove('selected');
+                } else {
+                    slot.classList.remove('disabled');
+                }
+            });
+        } catch (error) {
+            console.error('Ошибка при проверке слотов:', error);
+        }
+    }
+
+    // Инициализация проверки слотов
+    if (dateInput.value) {
+        checkAvailableSlots();
+    }
+});
+</script>
+{% endblock %}

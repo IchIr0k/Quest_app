@@ -1,0 +1,20 @@
+<div class="cards-grid">
+  {% for q in quests %}
+    <div class="card">
+      {% if q.image_path %}
+        <img src="/static/{{ q.image_path }}" alt="{{ q.title }}">
+      {% else %}
+        <div class="card-placeholder"></div>
+      {% endif %}
+      <h4>{{ q.title }}</h4>
+      <p class="meta">{{ q.genre }} • {{ q.difficulty }} • {{ q.players }} чел.</p>
+      <p class="desc">{{ q.description[:120] }}{% if q.description|length > 120 %}...{% endif %}</p>
+      <div class="card-actions">
+        <a class="btn" href="/quest/{{ q.id }}">Просмотр</a>
+        {% if user and user.is_admin %}
+          <a class="btn outline" href="/admin/edit/{{ q.id }}">Редактировать</a>
+        {% endif %}
+      </div>
+    </div>
+  {% endfor %}
+</div>

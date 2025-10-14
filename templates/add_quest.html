@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Добавить квест{% endblock %}
+{% block content %}
+<div class="container">
+  <h2>Добавить квест</h2>
+  
+  <form action="/admin/add" method="post" enctype="multipart/form-data" class="admin-form">
+    <label>Название<br><input type="text" name="title" required></label>
+
+    <label>Описание<br><textarea name="description" rows="4"></textarea></label>
+
+    <label>Жанр<br>
+      <div class="checkbox-group">
+        <label><input type="checkbox" name="genres" value="детям"> Детям</label><br>
+        <label><input type="checkbox" name="genres" value="страшные"> Страшные</label><br>
+        <label><input type="checkbox" name="genres" value="веселые"> Весёлые</label><br>
+        <label><input type="checkbox" name="genres" value="с актерами"> С актёрами</label><br>
+        <label><input type="checkbox" name="genres" value="без актеров"> Без актёров</label><br>
+        <label><input type="checkbox" name="genres" value="нестрашные"> Нестрашные</label><br>
+        <label><input type="checkbox" name="genres" value="загадки"> Загадки</label><br>
+      </div>
+    </label>
+
+    <label>Сложность<br>
+      <select name="difficulty" required>
+        <option value="">Выберите сложность</option>
+        <option value="легкий">Лёгкий</option>
+        <option value="нормальный">Нормальный</option>
+        <option value="сложный">Сложный</option>
+        <option value="экстремальный">Экстремальный</option>
+      </select>
+    </label>
+
+    <label>Уровень страха (1-5)<br>
+      <input type="number" name="fear_level" min="1" max="5" value="1" required>
+    </label>
+
+    <label>Максимальное количество игроков<br>
+      <input type="number" name="players" min="1" max="6" value="4" required>
+    </label>
+
+    <label>Изображение<br>
+      <input type="file" name="image" accept="image/*">
+    </label>
+
+    <button type="submit" class="btn">Добавить квест</button>
+    <a href="/admin" class="btn outline" style="margin-left: 10px;">Отмена</a>
+  </form>
+</div>
+
+<style>
+.admin-form {
+  max-width: 600px;
+}
+
+.admin-form input,
+.admin-form select,
+.admin-form textarea {
+  width: 100%;
+  padding: 10px;
+  margin: 5px 0 15px 0;
+  border: 1px solid #39417b;
+  border-radius: 8px;
+  background: #0b1330;
+  color: #e6e9fb;
+  box-sizing: border-box;
+}
+
+.admin-form label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.admin-form button {
+  margin-top: 10px;
+}
+
+.checkbox-group {
+  background: #0b1330;
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid #39417b;
+}
+
+.checkbox-group label {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  font-weight: normal;
+}
+
+.checkbox-group input[type="checkbox"] {
+  width: auto;
+  margin-right: 10px;
+}
+</style>
+{% endblock %}

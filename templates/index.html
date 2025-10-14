@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}Квесты{% endblock %}
+{% block content %}
+<div class="layout">
+  <!-- Фильтры -->
+  <aside class="filters">
+    <form id="filter-form">
+      <h3>Жанры</h3>
+      <label><input type="checkbox" name="genre" value="детям"> Детям</label><br>
+      <label><input type="checkbox" name="genre" value="страшные"> Страшные</label><br>
+      <label><input type="checkbox" name="genre" value="веселые"> Весёлые</label><br>
+      <label><input type="checkbox" name="genre" value="с актерами"> С актёрами</label><br>
+      <label><input type="checkbox" name="genre" value="без актеров"> Без актёров</label><br>
+      <label><input type="checkbox" name="genre" value="нестрашные"> Нестрашные</label><br>
+      <label><input type="checkbox" name="genre" value="загадки"> Загадки</label><br>
+
+      <h3>Сложность</h3>
+      <label><input type="checkbox" name="difficulty" value="легкий"> Лёгкий</label><br>
+      <label><input type="checkbox" name="difficulty" value="нормальный"> Нормальный</label><br>
+      <label><input type="checkbox" name="difficulty" value="сложный"> Сложный</label><br>
+      <label><input type="checkbox" name="difficulty" value="экстремальный"> Экстремальный</label><br>
+
+      <h3>Уровень страха</h3>
+      <div id="fear-level" class="stars">
+        <span data-value="1">★</span>
+        <span data-value="2">★</span>
+        <span data-value="3">★</span>
+        <span data-value="4">★</span>
+        <span data-value="5">★</span>
+      </div>
+      <input type="hidden" name="fear_level" id="fear_input">
+
+      <h3>Количество игроков</h3>
+      <div id="players" class="players-selector">
+        <span data-value="1">○</span>
+        <span data-value="2">○</span>
+        <span data-value="3">○</span>
+        <span data-value="4">○</span>
+        <span data-value="5">○</span>
+        <span data-value="6">○</span>
+      </div>
+      <input type="hidden" name="players" id="players_input">
+
+      <button type="button" id="apply-filters" class="btn" style="width:100%;margin-top:16px;">Применить фильтры</button>
+    </form>
+  </aside>
+
+  <!-- Основной контент -->
+  <main class="main-col">
+    <h2>Каталог квестов</h2>
+
+    <!-- Кнопки управления (только для админа) -->
+    {% if user and user.is_admin %}
+    <div class="admin-controls" style="margin-bottom: 20px;">
+      <a href="/admin/add" class="btn">Добавить квест</a>
+      <a href="/admin" class="btn outline">Редактировать квесты</a>
+    </div>
+    {% endif %}
+
+    <!-- Сетка квестов -->
+    <div class="cards-grid" id="quests-grid">
+      {% include "_quest_cards.html" %}
+    </div>
+
+    <!-- Кнопка "Посмотреть ещё" -->
+    {% if quests|length == 6 %}
+    <div class="load-more-wrap">
+      <button id="load-more" class="btn outline" data-skip="6">Посмотреть ещё</button>
+    </div>
+    {% endif %}
+  </main>
+</div>
+
+<script>
+// Инициализация фильтров при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    // Звезды рейтинга страха
+    const fearStars = document.querySelectorAll("#fear-level span");
+    const fearInput = document.getElementById("fear_input");
+
+    fearStars.forEach(star => {
+        star.addEventListener("click", function() {
+            const value = this.getAttribute("data-value");
+            fearInput.value = value;
+
+            // Обновляем визуальное отображение
+            fearStars.forEach(s => {
+                if (s.getAttribute("data-value") <= value) {
+                    s.style.color = "gold";
+                    s.textContent = "★";
+                } else {
+                    s.style.color = "gray";
+                    s.textContent = "☆";
+                }
+            });
+        });
+    });
+
+    // Круги количества игроков
+    const playerCircles = document.querySelectorAll("#players span");
+    const playersInput = document.getElementById("players_input");
+
+    playerCircles.forEach(circle => {
+        circle.addEventListener("click", function() {
+            const value = this.getAttribute("data-value");
+            playersInput.value = value;
+
+            // Обновляем визуальное отображение
+            playerCircles.forEach(c => {
+                if (c.getAttribute("data-value") <= value) {
+                    c.style.color = "#4CAF50";
+                    c.textContent = "●";
+                } else {
+                    c.style.color = "gray";
+                    c.textContent = "○";
+                }
+            });
+        });
+    });
+
+    // Применение фильтров
+    const applyBtn = document.getElementById("apply-filters");
+    if (applyBtn) {
+        applyBtn.addEventListener("click", function() {
+            const form = document.getElementById("filter-form");
+            const data = new FormData(form);
+            const params = new URLSearchParams();
+
+            // Собираем все выбранные значения
+            for (const [key, value] of data.entries()) {
+                if (value) {
+                    params.append(key, value);
+                }
+            }
+
+            // Переходим на отфильтрованную страницу
+            window.location.href = "/?" + params.toString();
+        });
+    }
+});
+</script>
+
+<style>
+.stars span {
+    font-size: 24px;
+    cursor: pointer;
+    margin-right: 5px;
+    color: gray;
+}
+
+.players-selector span {
+    font-size: 20px;
+    cursor: pointer;
+    margin-right: 8px;
+    color: gray;
+}
+
+.admin-controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+</style>
+{% endblock %}

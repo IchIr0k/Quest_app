@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Вход{% endblock %}
+{% block content %}
+<div class="container">
+    <h2>Авторизация</h2>
+    {% if error %}
+    <div class="alert error">
+        {{ error }}
+    </div>
+    {% endif %}
+    <form method="post" class="auth-form">
+        <label>
+            Логин
+            <input type="text" name="username" required placeholder="Введите ваш логин">
+        </label>
+        
+        <label>
+            Пароль
+            <input type="password" name="password" required placeholder="Введите ваш пароль">
+        </label>
+        
+        <button type="submit" class="btn">Войти</button>
+    </form>
+    <p style="margin-top: 20px; text-align: center;">
+        Нет аккаунта? <a href="/register">Зарегистрироваться</a>
+    </p>
+</div>
+
+<style>
+.auth-form {
+    max-width: 400px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.auth-form label {
+    display: block;
+    margin-bottom: 15px;
+    color: #e6e9fb;
+}
+
+.auth-form input {
+    width: 100%;
+    padding: 12px;
+    margin-top: 5px;
+    border: 1px solid #39417b;
+    border-radius: 8px;
+    background: #0b1330;
+    color: #e6e9fb;
+    box-sizing: border-box;
+}
+
+.auth-form input:focus {
+    border-color: #4CAF50;
+    outline: none;
+}
+
+.alert.error {
+    background: #3a1a1a;
+    border: 1px solid #dc3545;
+    color: lightpink;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.container {
+    max-width: 500px;
+}
+</style>
+{% endblock %}

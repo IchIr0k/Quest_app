@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Мои бронирования{% endblock %}
+{% block content %}
+<div class="container">
+    <h2>Мои бронирования</h2>
+    
+    {% if bookings %}
+    <div class="bookings-list">
+        {% for booking in bookings %}
+        <div class="booking-item">
+            <div class="booking-info">
+                <h4>{{ booking.quest.title }}</h4>
+                <p class="meta">
+                    <strong>Дата и время:</strong> {{ booking.date_time }}<br>
+                    <strong>Жанр:</strong> {{ booking.quest.genre }}<br>
+                    <strong>Сложность:</strong> {{ booking.quest.difficulty }}<br>
+                    <strong>Игроков:</strong> до {{ booking.quest.players }} человек
+                </p>
+            </div>
+            <div class="booking-status">
+                {% set booking_date = booking.date_time.split(' ')[0] %}
+                {% set booking_time = booking.date_time.split(' ')[1] %}
+                {% set is_past = booking_date < now().strftime('%Y-%m-%d') or 
+                                (booking_date == now().strftime('%Y-%m-%d') and booking_time < now().strftime('%H:%M')) %}
+                
+                {% if is_past %}
+                <span class="status past">Завершено</span>
+                {% else %}
+                <span class="status upcoming">Предстоит</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="no-bookings">
+        <p>У вас пока нет бронирований.</p>
+        <a href="/" class="btn">Найти квест</a>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.bookings-list {
+    margin-top: 20px;
+}
+
+.booking-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    background: var(--card);
+    border-radius: 8px;
+    margin-bottom: 15px;
+    border: 1px solid #39417b;
+}
+
+.booking-info h4 {
+    margin: 0 0 10px 0;
+    color: #e6e9fb;
+    font-size: 1.2em;
+}
+
+.booking-info .meta {
+    margin: 0;
+    color: #a0a7e6;
+    line-height: 1.5;
+}
+
+.booking-status {
+    flex-shrink: 0;
+    margin-left: 20px;
+}
+
+.status {
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 0.9em;
+}
+
+.status.upcoming {
+    background: #28a745;
+    color: white;
+}
+
+.status.past {
+    background: #6c757d;
+    color: white;
+}
+
+.no-bookings {
+    text-align: center;
+    padding: 40px;
+    background: var(--card);
+    border-radius: 8px;
+    border: 1px solid #39417b;
+}
+
+.no-bookings p {
+    margin-bottom: 20px;
+    color: #a0a7e6;
+    font-size: 1.1em;
+}
+</style>
+{% endblock %}
