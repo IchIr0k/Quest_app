@@ -9,7 +9,8 @@
 
 body{font-family:Inter, system-ui, Arial, sans-serif; background:var(--bg); color:#e6e9fb; margin:0; padding:0;}
 .topbar{display:flex;align-items:center;gap:18px;padding:16px 32px;background:linear-gradient(180deg,#0a0f2b,#0b1233);}
-.topbar .logo{font-weight:700;}
+.topbar .logo{font-weight:700; display: flex; align-items: center; gap: 12px;}
+.site-title {font-weight: 700; font-size: 1.5em;}
 .topbar nav a{color:var(--muted); margin-right:12px; text-decoration:none;}
 .topbar .search{margin-left:auto;}
 .topbar input{background:#0c1330;border:1px solid #1b2244;padding:8px 10px;border-radius:12px;color:#dfe6ff;}
@@ -39,6 +40,7 @@ body{font-family:Inter, system-ui, Arial, sans-serif; background:var(--bg); colo
 .thumb img{width:100px;height:70px;object-fit:cover;border-radius:6px}
 .admin-form input, .admin-form textarea, .auth-form input{width:100%;padding:8px;border-radius:8px;border:1px solid #1b2244;background:#0b1330;color:#e6e9fb;margin-top:6px;margin-bottom:12px}
 .alert{background:#3b2432;padding:10px;border-radius:8px;color:#ffc6c6;margin-bottom:8px}
+
 /* Стили для звезд рейтинга */
 .stars {
   display: flex;
@@ -88,6 +90,7 @@ body{font-family:Inter, system-ui, Arial, sans-serif; background:var(--bg); colo
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+  margin-bottom: 20px;
 }
 
 .admin-controls .btn {
@@ -104,4 +107,59 @@ body{font-family:Inter, system-ui, Arial, sans-serif; background:var(--bg); colo
   align-items: center;
   margin-bottom: 8px;
   cursor: pointer;
+}
+
+/* Стили для сортировки */
+.sort-container {
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sort-select {
+  background: var(--panel);
+  border: 1px solid #39417b;
+  color: #e6e9fb;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+/* Стили для цены */
+.price {
+  color: var(--accent);
+  font-weight: bold;
+  margin: 8px 0;
+  font-size: 1.1em;
+}
+
+/* Бейдж администратора */
+.admin-badge {
+  background: #ffc107;
+  color: #000;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8em;
+  font-weight: bold;
+  margin-right: 8px;
+}
+
+/* Улучшенные стили для навигации пользователя */
+.user-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-nav a {
+  color: var(--muted);
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.user-nav a:hover {
+  background: rgba(255,255,255,0.1);
 }

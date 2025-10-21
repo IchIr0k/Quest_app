@@ -47,6 +47,25 @@ def get_quests(db: Session, skip: int = 0, limit: int = 6, filters: dict = None)
             except ValueError:
                 pass
 
+            # Сортировка
+            if filters.get("sort"):
+                sort = filters["sort"]
+                if sort == "title_asc":
+                    query = query.order_by(models.Quest.title.asc())
+                elif sort == "title_desc":
+                    query = query.order_by(models.Quest.title.desc())
+                elif sort == "newest":
+                    query = query.order_by(models.Quest.created_at.desc())
+                elif sort == "oldest":
+                    query = query.order_by(models.Quest.created_at.asc())
+                elif sort == "price_low":
+                    query = query.order_by(models.Quest.price.asc())
+                elif sort == "price_high":
+                    query = query.order_by(models.Quest.price.desc())
+            else:
+                # Сортировка по умолчанию
+                query = query.order_by(models.Quest.created_at.desc())
+
     return query.offset(skip).limit(limit).all()
 
 

@@ -72,7 +72,8 @@ def save_upload(file: UploadFile) -> str:
 # --- Маршруты ---
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request, q: Optional[str] = None, genre: Optional[str] = None,
-          difficulty: Optional[str] = None, skip: int = 0, db: Session = Depends(get_db)):
+          difficulty: Optional[str] = None, sort: Optional[str] = None,
+          skip: int = 0, db: Session = Depends(get_db)):
     filters = {}
     if q:
         filters["q"] = q
@@ -80,6 +81,9 @@ def index(request: Request, q: Optional[str] = None, genre: Optional[str] = None
         filters["genre"] = genre
     if difficulty:
         filters["difficulty"] = difficulty
+    if sort:
+        filters["sort"] = sort
+
     quests = crud.get_quests(db, skip=skip, limit=6, filters=filters)
     try:
         user = get_current_user(request, db)
@@ -136,6 +140,7 @@ def get_available_slots(quest_id: int, date: str, db: Session = Depends(get_db))
     """API для получения занятых слотов"""
     booked_slots = crud.get_booked_slots_for_date(db, quest_id, date)
     return JSONResponse(booked_slots)
+
 
 
 @app.post("/book")
@@ -267,6 +272,7 @@ def add_post(request: Request,
              difficulty: str = Form(""),
              fear_level: int = Form(0),
              players: int = Form(1),
+             price: int = Form(2000),  # Добавлено
              image: Optional[UploadFile] = File(None),
              db: Session = Depends(get_db),
              user=Depends(require_admin)):
@@ -274,7 +280,6 @@ def add_post(request: Request,
     if image and image.filename:
         image_path = save_upload(image)
 
-    # Объединяем жанры через запятую
     genre_str = ", ".join(genres)
 
     new_quest = models.Quest(
@@ -284,6 +289,7 @@ def add_post(request: Request,
         difficulty=difficulty,
         fear_level=fear_level,
         players=players,
+        price=price,  # Добавлено
         image_path=image_path
     )
 
@@ -310,6 +316,7 @@ def edit_post(request: Request, quest_id: int,
               difficulty: str = Form(""),
               fear_level: int = Form(0),
               players: int = Form(1),
+              price: int = Form(2000),  # Добавлено
               image: Optional[UploadFile] = File(None),
               db: Session = Depends(get_db),
               user=Depends(require_admin)):
@@ -324,6 +331,7 @@ def edit_post(request: Request, quest_id: int,
     quest.difficulty = difficulty
     quest.fear_level = fear_level
     quest.players = players
+    quest.price = price  # Добавлено
 
     # Обновляем изображение если загружено новое
     if image and image.filename:

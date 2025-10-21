@@ -8,6 +8,7 @@
       {% endif %}
       <h4>{{ q.title }}</h4>
       <p class="meta">{{ q.genre }} • {{ q.difficulty }} • {{ q.players }} чел.</p>
+      <p class="price">{{ q.price }} руб.</p>
       <p class="desc">{{ q.description[:120] }}{% if q.description|length > 120 %}...{% endif %}</p>
       <div class="card-actions">
         <a class="btn" href="/quest/{{ q.id }}">Просмотр</a>

@@ -2,9 +2,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-# Данные для подключения (настрой их под свою БД)
+# Данные для подключения
 POSTGRES_USER = "postgres"
-POSTGRES_PASSWORD = "oma11037"        # укажи реальный пароль
+POSTGRES_PASSWORD = "1234"
 POSTGRES_DB = "Quest_site"
 POSTGRES_HOST = "localhost"
 POSTGRES_PORT = "5432"

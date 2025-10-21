@@ -102,37 +102,13 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   });
 
-  // Бронирование
-  const bookingForm = document.getElementById("booking-form");
-  if (bookingForm) {
-    const slotButtons = bookingForm.querySelectorAll(".slot");
-    const timeslotInput = document.getElementById("timeslot-input");
-
-    slotButtons.forEach(btn => {
-      btn.addEventListener("click", () => {
-        slotButtons.forEach(b => b.classList.remove("selected"));
-        btn.classList.add("selected");
-        timeslotInput.value = btn.textContent.trim();
-      });
-    });
-
-    bookingForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const fd = new FormData(bookingForm);
-      const res = await fetch("/book", { method: "POST", body: fd });
-      const resultDiv = document.getElementById("booking-result");
-      if (!resultDiv) return;
-
-      if (res.ok) {
-        const data = await res.json();
-        resultDiv.textContent = data.message;
-        resultDiv.style.color = "lightgreen";
-      } else {
-        let data;
-        try { data = await res.json(); } catch(_) { data = {}; }
-        resultDiv.textContent = data.message || "Ошибка бронирования";
-        resultDiv.style.color = "lightpink";
-      }
+  // Сортировка
+  const sortSelect = document.getElementById('sort-select');
+  if (sortSelect) {
+    sortSelect.addEventListener('change', function() {
+      const url = new URL(window.location);
+      url.searchParams.set('sort', this.value);
+      window.location.href = url.toString();
     });
   }
 

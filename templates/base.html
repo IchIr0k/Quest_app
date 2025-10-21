@@ -11,9 +11,10 @@
   <header class="topbar">
     <div class="logo">
       <img src="/static/images/logo.png" alt="Квесты" style="height: 40px;">
+      <span class="site-title">Алиби</span>
     </div>
     <nav>
-      <a href="/">Все квесты</a>
+      <a href="/"><strong>Все квесты</strong></a>
       {% if user %}
         <a href="/my-bookings">Мои бронирования</a>
       {% endif %}
@@ -26,10 +27,11 @@
     </div>
     <div class="user-nav">
       {% if user %}
-        <span>Привет, {{ user.username }}</span>
         {% if user.is_admin %}
           <span class="admin-badge">Администратор</span>
           <a href="/admin">Панель управления</a>
+        {% else %}
+          <span>{{ user.username }}</span>
         {% endif %}
         <a href="/logout">Выйти</a>
       {% else %}
@@ -44,7 +46,7 @@
   </main>
 
   <footer class="footer">
-    <small>© Квесты — демо</small>
+    <small>© Алиби — система бронирования квестов</small>
   </footer>
 </body>
 </html>

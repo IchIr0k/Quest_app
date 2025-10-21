@@ -49,9 +49,22 @@
   <main class="main-col">
     <h2>Каталог квестов</h2>
 
+    <!-- Сортировка -->
+    <div class="sort-container">
+      <label for="sort-select">Сортировка:</label>
+      <select id="sort-select" name="sort" class="sort-select">
+        <option value="title_asc" {% if request.query_params.get('sort') == 'title_asc' %}selected{% endif %}>От А до Я</option>
+        <option value="title_desc" {% if request.query_params.get('sort') == 'title_desc' %}selected{% endif %}>От Я до А</option>
+        <option value="newest" {% if request.query_params.get('sort') == 'newest' %}selected{% endif %}>Сначала новые</option>
+        <option value="oldest" {% if request.query_params.get('sort') == 'oldest' %}selected{% endif %}>Сначала старые</option>
+        <option value="price_low" {% if request.query_params.get('sort') == 'price_low' %}selected{% endif %}>Сначала дешевые</option>
+        <option value="price_high" {% if request.query_params.get('sort') == 'price_high' %}selected{% endif %}>Сначала дорогие</option>
+      </select>
+    </div>
+
     <!-- Кнопки управления (только для админа) -->
     {% if user and user.is_admin %}
-    <div class="admin-controls" style="margin-bottom: 20px;">
+    <div class="admin-controls">
       <a href="/admin/add" class="btn">Добавить квест</a>
       <a href="/admin" class="btn outline">Редактировать квесты</a>
     </div>
@@ -137,28 +150,16 @@ document.addEventListener('DOMContentLoaded', function() {
             window.location.href = "/?" + params.toString();
         });
     }
+
+    // Сортировка
+    const sortSelect = document.getElementById('sort-select');
+    if (sortSelect) {
+        sortSelect.addEventListener('change', function() {
+            const url = new URL(window.location);
+            url.searchParams.set('sort', this.value);
+            window.location.href = url.toString();
+        });
+    }
 });
 </script>
-
-<style>
-.stars span {
-    font-size: 24px;
-    cursor: pointer;
-    margin-right: 5px;
-    color: gray;
-}
-
-.players-selector span {
-    font-size: 20px;
-    cursor: pointer;
-    margin-right: 8px;
-    color: gray;
-}
-
-.admin-controls {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
-}
-</style>
 {% endblock %}
