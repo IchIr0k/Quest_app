@@ -55,8 +55,6 @@
       <select id="sort-select" name="sort" class="sort-select">
         <option value="title_asc" {% if request.query_params.get('sort') == 'title_asc' %}selected{% endif %}>От А до Я</option>
         <option value="title_desc" {% if request.query_params.get('sort') == 'title_desc' %}selected{% endif %}>От Я до А</option>
-        <option value="newest" {% if request.query_params.get('sort') == 'newest' %}selected{% endif %}>Сначала новые</option>
-        <option value="oldest" {% if request.query_params.get('sort') == 'oldest' %}selected{% endif %}>Сначала старые</option>
         <option value="price_low" {% if request.query_params.get('sort') == 'price_low' %}selected{% endif %}>Сначала дешевые</option>
         <option value="price_high" {% if request.query_params.get('sort') == 'price_high' %}selected{% endif %}>Сначала дорогие</option>
       </select>
@@ -70,15 +68,15 @@
     </div>
     {% endif %}
 
-    <!-- Сетка квестов -->
+     <!-- Сетка квестов - АДАПТИВНАЯ -->
     <div class="cards-grid" id="quests-grid">
       {% include "_quest_cards.html" %}
     </div>
 
     <!-- Кнопка "Посмотреть ещё" -->
-    {% if quests|length == 6 %}
+    {% if quests|length == 15 %}
     <div class="load-more-wrap">
-      <button id="load-more" class="btn outline" data-skip="6">Посмотреть ещё</button>
+      <button id="load-more" class="btn outline" data-skip="15">Посмотреть ещё</button>
     </div>
     {% endif %}
   </main>
@@ -160,6 +158,48 @@ document.addEventListener('DOMContentLoaded', function() {
             window.location.href = url.toString();
         });
     }
+
+    // Инициализация из URL параметров
+    function initFromURL() {
+        const urlParams = new URLSearchParams(window.location.search);
+
+        // Уровень страха
+        const fearLevel = urlParams.get('fear_level');
+        if (fearLevel && fearInput) {
+            fearInput.value = fearLevel;
+            fearStars.forEach((star, index) => {
+                if (index < fearLevel) {
+                    star.style.color = "gold";
+                    star.textContent = "★";
+                }
+            });
+        }
+
+        // Количество игроков
+        const players = urlParams.get('players');
+        if (players && playersInput) {
+            playersInput.value = players;
+            playerCircles.forEach((circle, index) => {
+                if (index < players) {
+                    circle.style.color = "#4CAF50";
+                    circle.textContent = "●";
+                }
+            });
+        }
+
+        // Чекбоксы
+        urlParams.getAll('genre').forEach(genre => {
+            const checkbox = document.querySelector(`input[name="genre"][value="${genre}"]`);
+            if (checkbox) checkbox.checked = true;
+        });
+
+        urlParams.getAll('difficulty').forEach(difficulty => {
+            const checkbox = document.querySelector(`input[name="difficulty"][value="${difficulty}"]`);
+            if (checkbox) checkbox.checked = true;
+        });
+    }
+
+    initFromURL();
 });
 </script>
 {% endblock %}

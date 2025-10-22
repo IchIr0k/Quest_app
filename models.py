@@ -1,6 +1,5 @@
-from sqlalchemy import Column, Integer, String, Boolean, Text, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, Boolean, Text, ForeignKey
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 from database import Base
 
 class User(Base):
@@ -22,9 +21,9 @@ class Quest(Base):
     difficulty = Column(String(30), nullable=False)
     fear_level = Column(Integer, nullable=False)
     players = Column(Integer, nullable=False)
-    price = Column(Integer, nullable=False, default=2000)
+    price = Column(Integer, nullable=False, default=2000)  # Добавлено поле цены
+    organizer_email = Column(String(120), nullable=False, default="alibi@mail.ru")  # Email организатора
     image_path = Column(String(255), nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     bookings = relationship("Booking", back_populates="quest")
 

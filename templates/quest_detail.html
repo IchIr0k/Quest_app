@@ -12,8 +12,15 @@
     <div class="detail-right">
         <h1>{{ quest.title }}</h1>
         <p class="meta">{{ quest.genre }} • {{ quest.difficulty }} • Уровень страха: {{ '★' * quest.fear_level }}{{ '☆' * (5 - quest.fear_level) }}</p>
+
+        <div class="price-section">
+            <span class="price-large">{{ quest.price }}₽</span>
+            <span class="price-label">за квест</span>
+        </div>
+
         <p><strong>Описание:</strong> {{ quest.description }}</p>
         <p><strong>Количество игроков:</strong> {{ quest.players }} человек</p>
+        <p><strong>Контакты организатора:</strong> {{ quest.organizer_email }}</p>
 
         <hr>
 
@@ -147,6 +154,55 @@ label {
     border-radius: 8px;
     color: #a0a7e6;
 }
+
+    .price-section {
+    background: linear-gradient(135deg, #4650f5, #6a11cb);
+    padding: 20px;
+    border-radius: 12px;
+    margin: 20px 0;
+    text-align: center;
+    border: 1px solid #5d67ff;
+}
+
+.price-large {
+    font-size: 2.5em;
+    font-weight: bold;
+    color: white;
+    display: block;
+}
+
+.price-label {
+    color: #e6e9fb;
+    font-size: 1.1em;
+}
+
+.detail {
+    display: flex;
+    gap: 40px; /* Увеличил gap для большего размера */
+    margin-top: 20px;
+}
+
+.detail-left {
+    flex: 0 0 450px; /* Увеличил ширину изображения */
+}
+
+.detail-image {
+    width: 100%;
+    height: 350px; /* Увеличил высоту изображения */
+    object-fit: cover;
+    border-radius: 12px;
+}
+
+.detail-placeholder {
+    width: 100%;
+    height: 350px; /* Увеличил высоту плейсхолдера */
+    background: var(--card);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+}
 </style>
 
 <script>
@@ -157,6 +213,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const slots = bookingForm.querySelectorAll('.slot');
     const timeslotInput = document.getElementById('timeslot-input');
     const dateInput = bookingForm.querySelector('input[name="date"]');
+    let isSubmitting = false; // Флаг для предотвращения двойной отправки
 
     // Блокировка прошедших дат
     const today = new Date().toISOString().split('T')[0];
@@ -182,6 +239,7 @@ document.addEventListener('DOMContentLoaded', function() {
     bookingForm.addEventListener('submit', async function(e) {
         e.preventDefault();
 
+        if (isSubmitting) return; // Защита от двойной отправки
         if (!timeslotInput.value) {
             alert('Пожалуйста, выберите время');
             return;
@@ -190,6 +248,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const bookBtn = document.getElementById('book-btn');
         const resultDiv = document.getElementById('booking-result');
 
+        isSubmitting = true;
         bookBtn.disabled = true;
         bookBtn.textContent = 'Бронируем...';
 
@@ -207,7 +266,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 bookingForm.reset();
                 slots.forEach(s => s.classList.remove('selected'));
                 timeslotInput.value = '';
-                checkAvailableSlots(); // Обновляем доступные слоты
+                checkAvailableSlots();
 
                 // Обновляем страницу через 2 секунды
                 setTimeout(() => {
@@ -219,6 +278,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (error) {
             resultDiv.innerHTML = `<div style="color: lightpink; padding: 10px; background: #3a1a1a; border-radius: 6px;">❌ Ошибка сети</div>`;
         } finally {
+            isSubmitting = false;
             bookBtn.disabled = false;
             bookBtn.textContent = 'Забронировать';
         }

@@ -1,21 +1,62 @@
 <div class="cards-grid">
-  {% for q in quests %}
-    <div class="card">
-      {% if q.image_path %}
-        <img src="/static/{{ q.image_path }}" alt="{{ q.title }}">
-      {% else %}
-        <div class="card-placeholder"></div>
-      {% endif %}
-      <h4>{{ q.title }}</h4>
-      <p class="meta">{{ q.genre }} • {{ q.difficulty }} • {{ q.players }} чел.</p>
-      <p class="price">{{ q.price }} руб.</p>
-      <p class="desc">{{ q.description[:120] }}{% if q.description|length > 120 %}...{% endif %}</p>
-      <div class="card-actions">
-        <a class="btn" href="/quest/{{ q.id }}">Просмотр</a>
-        {% if user and user.is_admin %}
-          <a class="btn outline" href="/admin/edit/{{ q.id }}">Редактировать</a>
-        {% endif %}
-      </div>
+  {% for quest in quests %}
+  <div class="card">
+    {% if quest.image_path %}
+    <img src="/static/{{ quest.image_path }}" alt="{{ quest.title }}">
+    {% else %}
+    <div class="card-placeholder"></div>
+    {% endif %}
+    <h4>{{ quest.title }}</h4>
+    <p class="meta">{{ quest.genre }} • {{ quest.difficulty }}</p>
+
+    <div class="price-card">
+      <span class="price">{{ quest.price }}₽</span>
     </div>
+
+    <p class="desc">{{ quest.description[:100] }}{% if quest.description|length > 100 %}...{% endif %}</p>
+    <div class="card-actions">
+      <a href="/quest/{{ quest.id }}" class="btn">Подробнее</a>
+    </div>
+  </div>
   {% endfor %}
 </div>
+
+<style>
+.card {
+    background: var(--card);
+    padding: 16px; /* Увеличил padding */
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5); /* Увеличил тень */
+    min-height: 360px; /* Увеличил минимальную высоту */
+    display: flex;
+    flex-direction: column;
+}
+
+.card img {
+    width: 100%;
+    height: 160px; /* Увеличил высоту изображения */
+    object-fit: cover;
+    border-radius: 8px;
+    background: #0b122e;
+}
+
+.card-placeholder {
+    height: 160px; /* Увеличил высоту плейсхолдера */
+    background: #0b122e;
+    border-radius: 8px;
+}
+
+.price-card {
+    background: rgba(70, 80, 245, 0.2);
+    padding: 8px 12px;
+    border-radius: 8px;
+    margin: 8px 0;
+    border: 1px solid #4650f5;
+}
+
+.price {
+    color: var(--accent);
+    font-weight: bold;
+    font-size: 1.3em; /* Увеличил размер цены */
+}
+</style>

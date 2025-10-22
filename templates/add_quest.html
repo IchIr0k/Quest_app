@@ -39,8 +39,12 @@
       <input type="number" name="players" min="1" max="6" value="4" required>
     </label>
 
-    <label>Цена (руб.)<br>
-      <input type="number" name="price" min="0" step="100" value="{% if quest %}{{ quest.price }}{% else %}2000{% endif %}" required>
+    <label>Email организатора<br>
+      <input type="email" name="organizer_email" value="alibi@mail.ru" required>
+    </label>
+
+    <label>Цена (руб)<br>
+      <input type="number" name="price" min="0" value="2000" required>
     </label>
 
     <label>Изображение<br>

@@ -22,14 +22,18 @@ document.addEventListener("DOMContentLoaded", function() {
 
           const cardsGrid = document.querySelector(".cards-grid");
           if (newGrid && cardsGrid) {
-            cardsGrid.insertAdjacentHTML('beforeend', newGrid.innerHTML);
-            const addedCount = newGrid.querySelectorAll('.card').length;
+            // Добавляем новые карточки
+            const newCards = newGrid.innerHTML;
+            cardsGrid.insertAdjacentHTML('beforeend', newCards);
+
+            const addedCount = (newGrid.innerHTML.match(/class="card"/g) || []).length;
             const newSkip = skip + addedCount;
             btn.dataset.skip = newSkip;
             btn.textContent = "Посмотреть ещё";
             btn.disabled = false;
 
-            if (addedCount === 0 || addedCount < 6) {
+            // Скрываем кнопку если загружено меньше чем лимит
+            if (addedCount === 0 || addedCount < 15) {
               btn.style.display = 'none';
             }
           } else {

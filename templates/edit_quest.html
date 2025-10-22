@@ -39,6 +39,10 @@
             <input type="number" name="players" min="1" max="6" value="{{ quest.players }}" required>
         </label>
 
+        <label>Email организатора<br>
+          <input type="email" name="organizer_email" value="{{ quest.organizer_email }}" required>
+        </label>
+
         <label>Цена (руб.)<br>
           <input type="number" name="price" min="0" step="100" value="{% if quest %}{{ quest.price }}{% else %}2000{% endif %}" required>
         </label>

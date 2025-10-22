@@ -4,6 +4,23 @@
 <div class="container">
     <h2>Панель администратора</h2>
 
+<!-- Кнопки отчетов -->
+<div class="report-controls">
+    <h3>Отчеты по бронированиям</h3>
+    <div class="report-buttons">
+        <a href="/admin/report/word" class="btn outline">
+            📄 Отчет по брони в Word
+        </a>
+        <a href="/admin/report/excel" class="btn outline">
+            📊 Отчет по брони в Excel
+        </a>
+        <a href="/admin/report/pdf" class="btn outline">
+            📑 Отчет по брони в PDF
+        </a>
+    </div>
+    <p class="report-info">Отчеты содержат данные о всех бронированиях с информацией о пользователях, квестах и общей выручке.</p>
+</div>
+
     {% if error %}
     <div class="alert error">
         {{ error }}
@@ -45,6 +62,42 @@
         <a href="/admin/bookings" class="btn outline">Управление бронированиями</a>
     </div>
 
+    {% if error %}
+    <div class="alert error">
+        {{ error }}
+
+        {% if blocked_quest_id and quest_bookings %}
+        <div style="margin-top: 15px; padding: 15px; background: #2a1a1a; border-radius: 6px;">
+            <strong>Активные бронирования для этого квеста:</strong>
+            <div style="margin-top: 10px;">
+                {% for booking in quest_bookings %}
+                <div style="padding: 8px; margin: 5px 0; background: #3a2a2a; border-radius: 4px;">
+                    📅 {{ booking.date_time }} - {{ booking.user.username }}
+                    {% if booking.user.email %}({{ booking.user.email }}){% endif %}
+                </div>
+                {% endfor %}
+            </div>
+
+            <div style="margin-top: 15px; display: flex; gap: 10px;">
+                <form method="post" action="/admin/delete-all-bookings/{{ blocked_quest_id }}"
+                      onsubmit="return confirm('Вы уверены, что хотите удалить ВСЕ бронирования этого квеста?')">
+                    <button type="submit" class="btn danger small">Удалить все бронирования</button>
+                </form>
+
+                <form method="post" action="/admin/delete-quest-with-bookings/{{ blocked_quest_id }}"
+                      onsubmit="return confirm('ВНИМАНИЕ: Это удалит квест и ВСЕ его бронирования. Продолжить?')">
+                    <button type="submit" class="btn danger small">Удалить квест и бронирования</button>
+                </form>
+
+                <a href="/admin/bookings?quest_id={{ blocked_quest_id }}" class="btn outline small">
+                    Управление бронированиями
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
     <div class="admin-list">
         {% for q in quests %}
         <div class="admin-item {% if blocked_quest_id == q.id %}highlighted{% endif %}">
@@ -58,6 +111,9 @@
             <div class="info">
                 <h4>{{ q.title }}</h4>
                 <p class="meta">{{ q.genre }} • {{ q.difficulty }} • {{ q.players }} чел.</p>
+                <div class="price-card">
+                    <span class="price">{{ q.price }}₽</span>
+                </div>
 
                 {% set booking_count = namespace(value=0) %}
                 {% for booking in quest_bookings if booking.quest_id == q.id %}
@@ -85,111 +141,63 @@
 </div>
 
 <style>
-.admin-controls {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
-}
-
-.admin-list {
-    margin-top: 20px;
-}
-
-.admin-item {
-    display: flex;
-    align-items: center;
-    padding: 15px;
-    background: var(--card);
-    border-radius: 8px;
-    margin-bottom: 15px;
-    border: 1px solid #39417b;
-    transition: all 0.3s;
-}
-
-.admin-item.highlighted {
-    border: 2px solid #dc3545;
-    background: #2a1a1a;
-}
-
-.thumb {
-    flex: 0 0 80px;
-    margin-right: 20px;
-}
-
-.thumb img {
-    width: 80px;
-    height: 60px;
-    object-fit: cover;
-    border-radius: 6px;
-}
-
-.card-placeholder.small {
-    width: 80px;
-    height: 60px;
+.report-controls {
     background: var(--panel);
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--muted);
-}
-
-.info {
-    flex: 1;
-}
-
-.info h4 {
-    margin: 0 0 5px 0;
-    color: #e6e9fb;
-}
-
-.meta {
-    margin: 0 0 10px 0;
-    color: #a0a7e6;
-    font-size: 0.9em;
-}
-
-.booking-badge {
-    display: inline-block;
-    background: #28a745;
-    color: white;
-    padding: 4px 8px;
+    padding: 20px;
     border-radius: 12px;
-    font-size: 0.8em;
-    margin-bottom: 10px;
+    margin-bottom: 25px;
+    border: 1px solid #39417b;
 }
 
-.actions {
+.report-controls h3 {
+    margin: 0 0 15px 0;
+    color: #e6e9fb;
+    font-size: 1.2em;
+}
+
+.report-buttons {
     display: flex;
-    gap: 10px;
+    gap: 12px;
+    flex-wrap: wrap;
 }
 
-.btn.danger {
-    background: #dc3545;
-    border-color: #dc3545;
+.report-buttons .btn {
+    flex: 1;
+    min-width: 200px;
+    padding: 12px 16px;
+    text-align: center;
+    font-size: 0.95em;
 }
 
-.btn.danger:hover {
-    background: #c82333;
-    border-color: #bd2130;
+.report-info {
+    margin: 15px 0 0 0;
+    color: var(--muted);
+    font-size: 0.9em;
+    text-align: center;
 }
 
-.btn.small {
-    padding: 6px 12px;
-    font-size: 0.8em;
-}
-
-.alert.error {
-    background: #3a1a1a;
-    border: 1px solid #dc3545;
-    color: lightpink;
-    padding: 12px;
+.price-card {
+    background: rgba(70, 80, 245, 0.2);
+    padding: 8px 12px;
     border-radius: 8px;
-    margin-bottom: 20px;
+    margin: 8px 0;
+    border: 1px solid #4650f5;
+    display: inline-block;
+}
+
+.price {
+    color: var(--accent);
+    font-weight: bold;
+    font-size: 1.1em;
 }
 </style>
 
 <script>
+function showWordMessage() {
+    alert('Функция отчета в Word будет реализована позже. Используйте Excel или PDF отчеты.');
+    return false;
+}
+
 async function confirmDelete(form, questTitle) {
     const questId = form.action.split('/').pop();
 
@@ -198,7 +206,6 @@ async function confirmDelete(form, questTitle) {
         const result = await response.json();
 
         if (result.has_bookings) {
-            // Показываем расширенное сообщение
             const userChoice = confirm(
                 `Квест "${questTitle}" имеет активные бронирования.\n\n` +
                 `• Нажмите OK для просмотра подробностей и управления бронированиями\n` +
@@ -206,7 +213,6 @@ async function confirmDelete(form, questTitle) {
             );
 
             if (userChoice) {
-                // Перенаправляем на страницу с фокусом на этот квест
                 window.location.href = `/admin#quest-${questId}`;
             }
             return false;
@@ -215,11 +221,9 @@ async function confirmDelete(form, questTitle) {
         console.error('Ошибка при проверке бронирований:', error);
     }
 
-    // Если проверка не сработала, используем стандартное подтверждение
     return confirm(`Вы уверены, что хотите удалить квест "${questTitle}"?`);
 }
 
-// Скролл к выделенному квесту при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
     const urlParams = new URLSearchParams(window.location.search);
     const questId = urlParams.get('highlight');
