@@ -20,6 +20,10 @@ from sqlalchemy.exc import IntegrityError
 from docx import Document
 from docx.shared import Inches, Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.shared import Inches
+from docx.oxml.shared import qn
+from docx.oxml import parse_xml
+from docx.oxml.ns import nsdecls
 
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
@@ -368,10 +372,37 @@ def add_post(request: Request,
              fear_level: int = Form(0),
              players: int = Form(1),
              image: Optional[UploadFile] = File(None),
+             clipboard_image: str = Form(None),
              db: Session = Depends(get_db),
              user=Depends(require_admin)):
     image_path = None
-    if image and image.filename:
+
+    # Обработка изображения из буфера обмена
+    if clipboard_image and clipboard_image.startswith('data:image'):
+        import base64
+        # Извлекаем данные из Data URL
+        image_data = clipboard_image.split(',')[1]
+        image_bytes = base64.b64decode(image_data)
+
+        # Сохраняем файл
+        ext = '.png'  # По умолчанию PNG
+        if 'image/jpeg' in clipboard_image:
+            ext = '.jpg'
+        elif 'image/png' in clipboard_image:
+            ext = '.png'
+        elif 'image/gif' in clipboard_image:
+            ext = '.gif'
+
+        safe_name = f"{uuid.uuid4().hex}{ext}"
+        dest = os.path.join("static", "uploads", safe_name)
+
+        with open(dest, "wb") as f:
+            f.write(image_bytes)
+
+        image_path = f"uploads/{safe_name}"
+
+    # Обработка обычной загрузки файла
+    elif image and image.filename:
         image_path = save_upload(image)
 
     genre_str = ", ".join(genres)
@@ -415,18 +446,50 @@ def edit_post(request: Request,
               fear_level: int = Form(0),
               players: int = Form(1),
               image: Optional[UploadFile] = File(None),
+              clipboard_image: str = Form(None),
               db: Session = Depends(get_db),
               user=Depends(require_admin)):
     quest = crud.get_quest(db, quest_id)
     if not quest:
         raise HTTPException(404, "Квест не найден")
 
-    if image and image.filename:
-        image_path = save_upload(image)
+    # Обработка изображения из буфера обмена
+    if clipboard_image and clipboard_image.startswith('data:image'):
+        import base64
+        # Удаляем старое изображение если есть
         if quest.image_path:
             old_path = os.path.join("static", quest.image_path)
             if os.path.exists(old_path):
                 os.remove(old_path)
+
+        # Извлекаем данные из Data URL
+        image_data = clipboard_image.split(',')[1]
+        image_bytes = base64.b64decode(image_data)
+
+        # Сохраняем файл
+        ext = '.png'
+        if 'image/jpeg' in clipboard_image:
+            ext = '.jpg'
+        elif 'image/png' in clipboard_image:
+            ext = '.png'
+        elif 'image/gif' in clipboard_image:
+            ext = '.gif'
+
+        safe_name = f"{uuid.uuid4().hex}{ext}"
+        dest = os.path.join("static", "uploads", safe_name)
+
+        with open(dest, "wb") as f:
+            f.write(image_bytes)
+
+        quest.image_path = f"uploads/{safe_name}"
+
+    # Обработка обычной загрузки файла
+    elif image and image.filename:
+        if quest.image_path:
+            old_path = os.path.join("static", quest.image_path)
+            if os.path.exists(old_path):
+                os.remove(old_path)
+        image_path = save_upload(image)
         quest.image_path = image_path
 
     genre_str = ", ".join(genres)
@@ -539,7 +602,7 @@ def api_quest_has_bookings(quest_id: int, db: Session = Depends(get_db)):
 # --- Отчеты ---
 @app.get("/admin/report/excel")
 async def report_excel(db: Session = Depends(get_db), user=Depends(require_admin)):
-    """Генерация отчета в Excel"""
+    """Генерация отчета в Excel с логотипом и печатью"""
     bookings = crud.get_all_bookings(db)
 
     wb = Workbook()
@@ -555,26 +618,38 @@ async def report_excel(db: Session = Depends(get_db), user=Depends(require_admin
     center_align = Alignment(horizontal='center', vertical='center')
     left_align = Alignment(horizontal='left', vertical='center')
 
-    # Шапка документа
-    ws.merge_cells('A1:F1')
-    ws['A1'] = "Алиби"
-    ws['A1'].font = Font(bold=True, size=18)
-    ws['A1'].alignment = center_align
+    # Добавляем логотип
+    try:
+        logo_path = "static/images/logo_black.png"
+        if os.path.exists(logo_path):
+            from openpyxl.drawing.image import Image as XLImage
+            logo = XLImage(logo_path)
+            logo.width = 80
+            logo.height = 80
+            ws.add_image(logo, 'A1')
+    except:
+        pass
 
-    ws.merge_cells('A2:F2')
-    ws['A2'] = "РОССИЯ, 125009, г.Москва, ул.Квестовая, д.88"
-    ws['A2'].font = normal_font
-    ws['A2'].alignment = center_align
+    # Шапка документа (смещаем из-за логотипа)
+    ws.merge_cells('D1:F1')
+    ws['D1'] = "Алиби"
+    ws['D1'].font = Font(bold=True, size=18)
+    ws['D1'].alignment = center_align
 
-    ws.merge_cells('A3:F3')
-    ws['A3'] = "Телефон: +7(999) 999-99-99"
-    ws['A3'].font = normal_font
-    ws['A3'].alignment = center_align
+    ws.merge_cells('D2:F2')
+    ws['D2'] = "РОССИЯ, 125009, г.Москва, ул.Квестовая, д.88"
+    ws['D2'].font = normal_font
+    ws['D2'].alignment = center_align
 
-    ws.merge_cells('A4:F4')
-    ws['A4'] = "e-mail: alibi@mail.ru"
-    ws['A4'].font = normal_font
-    ws['A4'].alignment = center_align
+    ws.merge_cells('D3:F3')
+    ws['D3'] = "Телефон: +7(999) 999-99-99"
+    ws['D3'].font = normal_font
+    ws['D3'].alignment = center_align
+
+    ws.merge_cells('D4:F4')
+    ws['D4'] = "e-mail: alibi@mail.ru"
+    ws['D4'].font = normal_font
+    ws['D4'].alignment = center_align
 
     # Пустая строка
     ws.row_dimensions[5].height = 15
@@ -646,8 +721,22 @@ async def report_excel(db: Session = Depends(get_db), user=Depends(require_admin
     ws[f'A{stats_row}'].font = bold_font
     ws[f'A{stats_row}'].alignment = center_align
 
+    # Добавляем печать
+    try:
+        stamp_path = "static/images/stamp.png"
+        if os.path.exists(stamp_path):
+            from openpyxl.drawing.image import Image as XLImage
+            stamp = XLImage(stamp_path)
+            stamp.width = 80
+            stamp.height = 80
+            # Размещаем печать справа внизу
+            stamp_cell = f'F{stats_row + 4}'
+            ws.add_image(stamp, stamp_cell)
+    except:
+        pass
+
     # Место для подписи
-    sign_row = stats_row + 3
+    sign_row = stats_row + 6
     ws.merge_cells(f'A{sign_row}:F{sign_row}')
     ws[f'A{sign_row}'] = "_________________________"
     ws[f'A{sign_row}'].alignment = center_align
@@ -661,6 +750,13 @@ async def report_excel(db: Session = Depends(get_db), user=Depends(require_admin
     column_widths = [8, 20, 25, 30, 25, 15]
     for i, width in enumerate(column_widths, 1):
         ws.column_dimensions[get_column_letter(i)].width = width
+
+    # Настройка высоты строк
+    for row in range(1, sign_row + 2):
+        if row in [1, 6, 10]:
+            ws.row_dimensions[row].height = 25
+        else:
+            ws.row_dimensions[row].height = 18
 
     # Сохраняем в буфер
     buffer = io.BytesIO()
@@ -679,77 +775,168 @@ async def report_excel(db: Session = Depends(get_db), user=Depends(require_admin
 
 @app.get("/admin/report/pdf")
 async def report_pdf(db: Session = Depends(get_db), user=Depends(require_admin)):
-    """Генерация отчета в PDF"""
+    """Генерация отчета в PDF с поддержкой кириллицы"""
     bookings = crud.get_all_bookings(db)
 
     buffer = io.BytesIO()
-    p = canvas.Canvas(buffer, pagesize=A4)
 
-    # Шапка
-    p.setFont("Helvetica-Bold", 16)
-    p.drawString(100, 800, "Алиби")
-    p.setFont("Helvetica", 10)
-    p.drawString(100, 780, "РОССИЯ, 125009, г.Москва, ул.Квестовая, д.88")
-    p.drawString(100, 765, "Телефон: +7(999) 999-99-99")
-    p.drawString(100, 750, "e-mail: alibi@mail.ru")
+    # Используем ReportLab с правильной кодировкой
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
 
-    p.setFont("Helvetica-Bold", 14)
-    p.drawString(100, 720, "ОТЧЕТ ПО БРОНИРОВАНИЯМ")
+    # Регистрируем шрифт с поддержкой кириллицы (если есть)
+    try:
+        # Попробуем найти стандартные шрифты с кириллицей
+        pdfmetrics.registerFont(TTFont('Arial', 'arial.ttf'))
+        pdfmetrics.registerFont(TTFont('Arial-Bold', 'arialbd.ttf'))
+        font_name = 'Arial'
+    except:
+        try:
+            pdfmetrics.registerFont(TTFont('DejaVuSans', 'DejaVuSans.ttf'))
+            pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', 'DejaVuSans-Bold.ttf'))
+            font_name = 'DejaVuSans'
+        except:
+            font_name = 'Helvetica'  # Базовый шрифт
 
-    p.setFont("Helvetica", 10)
-    p.drawString(100, 700, f"Дата формирования: {datetime.now().strftime('%d.%m.%Y %H:%M')}")
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=40,
+        leftMargin=40,
+        topMargin=60,
+        bottomMargin=40
+    )
 
-    # Таблица
-    y = 650
-    p.setFont("Helvetica-Bold", 10)
-    p.drawString(50, y, "№")
-    p.drawString(70, y, "Пользователь")
-    p.drawString(150, y, "Квест")
-    p.drawString(300, y, "Цена")
+    styles = getSampleStyleSheet()
 
-    y -= 20
-    p.setFont("Helvetica", 9)
+    # Создаем кастомные стили для русского текста
+    styles.add(ParagraphStyle(
+        name='Russian',
+        fontName=font_name,
+        fontSize=10,
+        leading=12,
+    ))
+    styles.add(ParagraphStyle(
+        name='RussianBold',
+        fontName=f'{font_name}-Bold' if font_name != 'Helvetica' else 'Helvetica-Bold',
+        fontSize=10,
+        leading=12,
+    ))
+    styles.add(ParagraphStyle(
+        name='RussianTitle',
+        fontName=f'{font_name}-Bold' if font_name != 'Helvetica' else 'Helvetica-Bold',
+        fontSize=16,
+        leading=18,
+        alignment=1,  # center
+    ))
+    styles.add(ParagraphStyle(
+        name='RussianHeading',
+        fontName=f'{font_name}-Bold' if font_name != 'Helvetica' else 'Helvetica-Bold',
+        fontSize=14,
+        leading=16,
+        alignment=1,  # center
+    ))
 
-    total_revenue = 0
-    for i, booking in enumerate(bookings, 1):
-        if y < 100:
-            p.showPage()
-            p.setFont("Helvetica", 9)
-            y = 750
+    story = []
 
-        p.drawString(50, y, str(i))
-        p.drawString(70, y, booking.user.username or 'Не указан')
-        p.drawString(150, y, booking.quest.title)
-        p.drawString(300, y, f"{booking.quest.price} руб")
+    # Добавляем логотип
+    try:
+        logo_path = "static/images/logo_black.png"
+        if os.path.exists(logo_path):
+            from reportlab.platypus import Image
+            logo = Image(logo_path, width=80, height=80)
+            logo.hAlign = 'LEFT'
+            story.append(logo)
+            story.append(Spacer(1, 10))
+    except:
+        pass
 
-        total_revenue += booking.quest.price
-        y -= 15
+    # Шапка документа
+    story.append(Paragraph("Алиби", styles['RussianTitle']))
+    story.append(Paragraph("РОССИЯ, 125009, г.Москва, ул.Квестовая, д.88", styles['Russian']))
+    story.append(Paragraph("Телефон: +7(999) 999-99-99", styles['Russian']))
+    story.append(Paragraph("e-mail: alibi@mail.ru", styles['Russian']))
+    story.append(Spacer(1, 12))
 
-    # Итоги
-    y -= 20
-    p.setFont("Helvetica-Bold", 10)
-    p.drawString(50, y, f"Всего бронирований: {len(bookings)}")
-    p.drawString(50, y - 15, f"Общая выручка: {total_revenue} руб")
+    # Заголовок отчета
+    story.append(Paragraph("ОТЧЕТ ПО БРОНИРОВАНИЯМ", styles['RussianHeading']))
+    story.append(Paragraph(f"Дата формирования: {datetime.now().strftime('%d.%m.%Y %H:%M')}", styles['Russian']))
+    story.append(Spacer(1, 20))
+
+    # Таблица с данными
+    if bookings:
+        # Заголовки таблицы
+        data = [['№', 'Пользователь', 'Квест', 'Цена (руб)']]
+
+        total_revenue = 0
+        for i, booking in enumerate(bookings, 1):
+            data.append([
+                str(i),
+                booking.user.username or 'Не указан',
+                booking.quest.title,
+                f"{booking.quest.price} руб"
+            ])
+            total_revenue += booking.quest.price
+
+        # Создаем таблицу
+        table = Table(data, colWidths=[30, 120, 200, 60])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#E6E6FA')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('ALIGN', (1, 1), (2, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), f'{font_name}-Bold' if font_name != 'Helvetica' else 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('FONTNAME', (0, 1), (-1, -1), font_name),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+
+        story.append(table)
+        story.append(Spacer(1, 20))
+
+        # Итоги
+        story.append(Paragraph(f"Всего бронирований: {len(bookings)}", styles['RussianBold']))
+        story.append(Paragraph(f"Общая выручка: {total_revenue} руб", styles['RussianBold']))
+    else:
+        story.append(Paragraph("Нет данных о бронированиях", styles['Russian']))
+
+    story.append(Spacer(1, 30))
+
+    # Добавляем печать
+    try:
+        stamp_path = "static/images/stamp.png"
+        if os.path.exists(stamp_path):
+            from reportlab.platypus import Image
+            stamp = Image(stamp_path, width=80, height=80)
+            stamp.hAlign = 'RIGHT'
+            story.append(stamp)
+    except:
+        pass
 
     # Подпись
-    y -= 40
-    p.drawString(400, y, "_________________________")
-    p.drawString(400, y - 15, "Подпись ответственного лица")
+    story.append(Spacer(1, 10))
+    story.append(Paragraph("_________________________", styles['Russian']))
+    story.append(Paragraph("Подпись ответственного лица", styles['Russian']))
 
-    p.save()
+    doc.build(story)
     buffer.seek(0)
 
     filename = f"otchet_bronirovaniya_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
+    encoded_filename = urllib.parse.quote(filename)
+
     return StreamingResponse(
         buffer,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"}
     )
 
 
 @app.get("/admin/report/word")
 async def report_word(db: Session = Depends(get_db), user=Depends(require_admin)):
-    """Генерация отчета в Word"""
+    """Генерация отчета в Word с логотипом и печатью"""
     try:
         bookings = crud.get_all_bookings(db)
 
@@ -761,21 +948,30 @@ async def report_word(db: Session = Depends(get_db), user=Depends(require_admin)
         font.name = 'Arial'
         font.size = Pt(10)
 
-        # Шапка документа
-        title = doc.add_paragraph()
-        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        title_run = title.add_run("Алиби")
-        title_run.bold = True
-        title_run.font.size = Pt(14)
+        # Создаем таблицу для шапки с логотипом
+        header_table = doc.add_table(rows=1, cols=2)
+        header_table.autofit = False
+        header_table.columns[0].width = Inches(1.5)
+        header_table.columns[1].width = Inches(4.5)
 
-        address = doc.add_paragraph("РОССИЯ, 125009, г.Москва, ул.Квестовая, д.88")
-        address.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        # Добавляем логотип в первую ячейку
+        try:
+            logo_path = "static/images/logo_black.png"
+            if os.path.exists(logo_path):
+                logo_cell = header_table.cell(0, 0)
+                logo_paragraph = logo_cell.paragraphs[0]
+                logo_run = logo_paragraph.add_run()
+                logo_run.add_picture(logo_path, width=Inches(1.8), height=Inches(1.8))
+        except:
+            pass
 
-        phone = doc.add_paragraph("Телефон: +7(999) 999-99-99")
-        phone.alignment = WD_ALIGN_PARAGRAPH.CENTER
-
-        email = doc.add_paragraph("e-mail: alibi@mail.ru")
-        email.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        # Добавляем информацию во вторую ячейку
+        info_cell = header_table.cell(0, 1)
+        info_cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+        info_cell.paragraphs[0].add_run("Алиби\n").bold = True
+        info_cell.paragraphs[0].add_run("РОССИЯ, 125009, г.Москва, ул.Квестовая, д.88\n")
+        info_cell.paragraphs[0].add_run("Телефон: +7(999) 999-99-99\n")
+        info_cell.paragraphs[0].add_run("e-mail: alibi@mail.ru")
 
         doc.add_paragraph()
 
@@ -783,7 +979,7 @@ async def report_word(db: Session = Depends(get_db), user=Depends(require_admin)
         report_title = doc.add_paragraph("ОТЧЕТ ПО БРОНИРОВАНИЯМ")
         report_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
         report_title.runs[0].bold = True
-        report_title.runs[0].font.size = Pt(12)
+        report_title.runs[0].font.size = Pt(14)
 
         # Дата формирования
         date_para = doc.add_paragraph(f"Дата формирования: {datetime.now().strftime('%d.%m.%Y %H:%M')}")
@@ -791,54 +987,78 @@ async def report_word(db: Session = Depends(get_db), user=Depends(require_admin)
 
         doc.add_paragraph()
 
-        # Создаем таблицу
-        table = doc.add_table(rows=1, cols=4)
-        table.style = 'Table Grid'
+        # Создаем таблицу с данными
+        if bookings:
+            table = doc.add_table(rows=1, cols=4)
+            table.style = 'Table Grid'
+            table.autofit = False
+            table.columns[0].width = Inches(0.5)   # №
+            table.columns[1].width = Inches(1.5)   # Пользователь
+            table.columns[2].width = Inches(2.5)   # Квест
+            table.columns[3].width = Inches(1.0)   # Цена
 
-        # Заголовки таблицы
-        headers = ['№', 'Пользователь', 'Квест', 'Цена (руб)']
-        hdr_cells = table.rows[0].cells
-        for i, header in enumerate(headers):
-            hdr_cells[i].text = header
-            hdr_cells[i].paragraphs[0].runs[0].bold = True
-            hdr_cells[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+            # Заголовки таблицы
+            headers = ['№', 'Пользователь', 'Квест', 'Цена (руб)']
+            hdr_cells = table.rows[0].cells
+            for i, header in enumerate(headers):
+                hdr_cells[i].text = header
+                hdr_cells[i].paragraphs[0].runs[0].bold = True
+                hdr_cells[i].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+                # Заливаем фон заголовков
+                shading_elm = parse_xml(r'<w:shd {} w:fill="E6E6FA"/>'.format(nsdecls('w')))
+                hdr_cells[i]._tc.get_or_add_tcPr().append(shading_elm)
 
-        # Данные
-        total_revenue = 0
-        for i, booking in enumerate(bookings, 1):
-            row_cells = table.add_row().cells
-            row_cells[0].text = str(i)
-            row_cells[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+            # Данные
+            total_revenue = 0
+            for i, booking in enumerate(bookings, 1):
+                row_cells = table.add_row().cells
+                row_cells[0].text = str(i)
+                row_cells[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
 
-            row_cells[1].text = booking.user.username
-            row_cells[2].text = booking.quest.title
+                row_cells[1].text = booking.user.username or 'Не указан'
+                row_cells[2].text = booking.quest.title
 
-            row_cells[3].text = str(booking.quest.price)
-            row_cells[3].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+                row_cells[3].text = str(booking.quest.price)
+                row_cells[3].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
 
-            total_revenue += booking.quest.price
+                total_revenue += booking.quest.price
+
+            doc.add_paragraph()
+
+            # Итоги
+            total_para = doc.add_paragraph()
+            total_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+            total_para.add_run(f"ИТОГО: {total_revenue} руб\n").bold = True
+            total_para.add_run(f"Всего бронирований: {len(bookings)} | Общая выручка: {total_revenue} руб").bold = True
+
+        else:
+            doc.add_paragraph("Нет данных о бронированиях")
 
         doc.add_paragraph()
-
-        # Итоги
-        total_para = doc.add_paragraph(f"ИТОГО: {total_revenue} руб")
-        total_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-        total_para.runs[0].bold = True
-
-        stats_para = doc.add_paragraph(
-            f"Всего бронирований: {len(bookings)} | Общая выручка: {total_revenue} руб")
-        stats_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        stats_para.runs[0].bold = True
-
-        doc.add_paragraph()
         doc.add_paragraph()
 
-        # Место для подписи
-        sign_line = doc.add_paragraph("_________________________")
-        sign_line.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        # Создаем таблицу для подписи и печати
+        footer_table = doc.add_table(rows=1, cols=2)
+        footer_table.autofit = False
+        footer_table.columns[0].width = Inches(4.0)
+        footer_table.columns[1].width = Inches(2.0)
 
-        sign_text = doc.add_paragraph("Подпись ответственного лица")
-        sign_text.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        # Подпись в левой ячейке
+        sign_cell = footer_table.cell(0, 0)
+        sign_cell.paragraphs[0].add_run("_________________________\n")
+        sign_cell.paragraphs[0].add_run("Подпись ответственного лица")
+
+        # Печать в правой ячейке
+        try:
+            stamp_path = "static/images/stamp.png"
+            if os.path.exists(stamp_path):
+                stamp_cell = footer_table.cell(0, 1)
+                stamp_paragraph = stamp_cell.paragraphs[0]
+                stamp_paragraph.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+                stamp_run = stamp_paragraph.add_run()
+                stamp_run.add_picture(stamp_path, width=Inches(1.8), height=Inches(1.8))
+        except:
+            pass
 
         # Сохраняем в буфер
         buffer = io.BytesIO()
@@ -879,100 +1099,177 @@ async def download_statement(request: Request, db: Session = Depends(get_db)):
         '{passport_series}': data['passport_series'],
         '{passport_number}': data['passport_number'],
         '{current_date}': datetime.now().strftime('%d.%m.%Y'),
-        '{quest_title}': data['quest_title']
+        '{quest_title}': data.get('quest_title', '')
     }
 
     # Заменяем метки в документе
     for paragraph in doc.paragraphs:
         for key, value in replacements.items():
             if key in paragraph.text:
-                paragraph.text = paragraph.text.replace(key, value)
+                for run in paragraph.runs:
+                    if key in run.text:
+                        run.text = run.text.replace(key, value)
 
     # Также проверяем таблицы
     for table in doc.tables:
         for row in table.rows:
             for cell in row.cells:
-                for key, value in replacements.items():
-                    if key in cell.text:
-                        cell.text = cell.text.replace(key, value)
+                for paragraph in cell.paragraphs:
+                    for run in paragraph.runs:
+                        for key, value in replacements.items():
+                            if key in run.text:
+                                run.text = run.text.replace(key, value)
 
     # Сохраняем в буфер
     buffer = io.BytesIO()
     doc.save(buffer)
     buffer.seek(0)
 
-    filename = f"zayavlenie_{data['quest_title']}.docx"
+    filename = f"zayavlenie_{data.get('quest_title', 'quest')}.docx"
+    encoded_filename = urllib.parse.quote(filename)
 
     return StreamingResponse(
         buffer,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"}
     )
 
 
 @app.post("/download-receipt")
 async def download_receipt(request: Request, db: Session = Depends(get_db)):
-    """Скачивание чека"""
+    """Скачивание чека с поддержкой кириллицы"""
     user = get_current_user(request, db)
     data = await request.json()
 
-    # Создаем PDF чек
     buffer = io.BytesIO()
-    p = canvas.Canvas(buffer, pagesize=A4)
+
+    # Настройка шрифтов
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+
+    try:
+        pdfmetrics.registerFont(TTFont('Arial', 'arial.ttf'))
+        pdfmetrics.registerFont(TTFont('Arial-Bold', 'arialbd.ttf'))
+        font_name = 'Arial'
+    except:
+        try:
+            pdfmetrics.registerFont(TTFont('DejaVuSans', 'DejaVuSans.ttf'))
+            pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', 'DejaVuSans-Bold.ttf'))
+            font_name = 'DejaVuSans'
+        except:
+            font_name = 'Helvetica'
+
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=40,
+        leftMargin=40,
+        topMargin=40,
+        bottomMargin=40
+    )
+
+    styles = getSampleStyleSheet()
+
+    # Создаем стили
+    styles.add(ParagraphStyle(
+        name='ReceiptTitle',
+        fontName=f'{font_name}-Bold' if font_name != 'Helvetica' else 'Helvetica-Bold',
+        fontSize=16,
+        leading=18,
+        alignment=1,
+    ))
+    styles.add(ParagraphStyle(
+        name='ReceiptText',
+        fontName=font_name,
+        fontSize=10,
+        leading=12,
+    ))
+    styles.add(ParagraphStyle(
+        name='ReceiptBold',
+        fontName=f'{font_name}-Bold' if font_name != 'Helvetica' else 'Helvetica-Bold',
+        fontSize=10,
+        leading=12,
+    ))
+
+    story = []
+
+    # Логотип
+    try:
+        from reportlab.platypus import Image
+        logo_path = "static/images/logo_black.png"
+        if os.path.exists(logo_path):
+            logo = Image(logo_path, width=80, height=80)
+            logo.hAlign = 'LEFT'
+            story.append(logo)
+            story.append(Spacer(1, 10))
+    except:
+        pass
 
     # Шапка чека
-    p.setFont("Helvetica-Bold", 16)
-    p.drawString(150, 800, "Алиби")
-    p.setFont("Helvetica", 10)
-    p.drawString(150, 785, "Квест-проект")
+    story.append(Paragraph("Алиби", styles['ReceiptTitle']))
+    story.append(Paragraph("Квест-проект", styles['ReceiptText']))
+    story.append(Spacer(1, 15))
 
-    # Реквизиты организации
-    p.setFont("Helvetica", 9)
-    p.drawString(50, 750, "Юридический адрес: 125009, г. Москва, ул. Квестовая, д. 88")
-    p.drawString(50, 735, "ИНН: 7701234567")
-    p.drawString(50, 720, "КПП: 770101001")
-    p.drawString(50, 705, "ОГРН: 1234567890123")
-    p.drawString(50, 690, "Р/с: 40702810123450123456")
-    p.drawString(50, 675, "Банк: ПАО \"СБЕРБАНК\" г. Москва")
-    p.drawString(50, 660, "БИК: 044525225")
-    p.drawString(50, 645, "К/с: 30101810400000000225")
+    # Реквизиты
+    story.append(Paragraph("Юридический адрес: 125009, г. Москва, ул. Квестовая, д. 88", styles['ReceiptText']))
+    story.append(Paragraph("ИНН: 7701234567", styles['ReceiptText']))
+    story.append(Paragraph("КПП: 770101001", styles['ReceiptText']))
+    story.append(Paragraph("ОГРН: 1234567890123", styles['ReceiptText']))
+    story.append(Paragraph("Р/с: 40702810123450123456", styles['ReceiptText']))
+    story.append(Paragraph('Банк: ПАО "СБЕРБАНК" г. Москва', styles['ReceiptText']))
+    story.append(Paragraph("БИК: 044525225", styles['ReceiptText']))
+    story.append(Paragraph("К/с: 30101810400000000225", styles['ReceiptText']))
 
-    # Линия разделитель
-    p.line(50, 630, 550, 630)
+    story.append(Spacer(1, 15))
+
+    # Линия разделитель (имитация)
+    story.append(Paragraph("_" * 80, styles['ReceiptText']))
+    story.append(Spacer(1, 15))
 
     # Информация о заказе
-    p.setFont("Helvetica-Bold", 14)
-    p.drawString(50, 600, "КАССОВЫЙ ЧЕК")
+    story.append(Paragraph("КАССОВЫЙ ЧЕК", styles['ReceiptBold']))
+    story.append(Spacer(1, 10))
 
-    p.setFont("Helvetica", 10)
-    p.drawString(50, 575, f"Заказ: {data['quest_title']}")
-    p.drawString(50, 555, f"Дата: {datetime.now().strftime('%d.%m.%Y %H:%M')}")
-    p.drawString(50, 535, f"Клиент: {user.username}")
+    story.append(Paragraph(f"Заказ: {data['quest_title']}", styles['ReceiptText']))
+    story.append(Paragraph(f"Дата: {datetime.now().strftime('%d.%m.%Y %H:%M')}", styles['ReceiptText']))
+    story.append(Paragraph(f"Клиент: {user.username}", styles['ReceiptText']))
+    story.append(Spacer(1, 10))
 
     # Сумма
-    p.setFont("Helvetica-Bold", 12)
-    p.drawString(50, 500, f"Сумма: {data['quest_price']} руб.")
+    story.append(Paragraph(f"Сумма: {data['quest_price']} руб.", styles['ReceiptBold']))
+    story.append(Spacer(1, 10))
 
     # НДС
-    p.setFont("Helvetica", 9)
-    p.drawString(50, 475, "В том числе НДС 20%: -")
-    p.drawString(50, 460, "Согласно Упрощенной системе налогообложения")
+    story.append(Paragraph("В том числе НДС 20%: -", styles['ReceiptText']))
+    story.append(Paragraph("Согласно Упрощенной системе налогообложения", styles['ReceiptText']))
+
+    story.append(Spacer(1, 20))
+
+    # Печать
+    try:
+        from reportlab.platypus import Image
+        stamp_path = "static/images/stamp.png"
+        if os.path.exists(stamp_path):
+            stamp = Image(stamp_path, width=80, height=80)
+            stamp.hAlign = 'RIGHT'
+            story.append(stamp)
+    except:
+        pass
 
     # Подпись
-    p.setFont("Helvetica", 9)
-    p.drawString(400, 200, "Кассир: _________________")
-    p.drawString(400, 185, "Подпись: _________________")
+    story.append(Spacer(1, 10))
+    story.append(Paragraph("Подпись: _________________", styles['ReceiptText']))
 
-    p.showPage()
-    p.save()
+    doc.build(story)
     buffer.seek(0)
 
     filename = f"chek_{data['quest_title']}.pdf"
+    encoded_filename = urllib.parse.quote(filename)
 
     return StreamingResponse(
         buffer,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"}
     )
 
 

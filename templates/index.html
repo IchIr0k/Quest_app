@@ -47,28 +47,31 @@
 
   <!-- Основной контент -->
   <main class="main-col">
-    <h2>Каталог квестов</h2>
+    <div class="catalog-header">
+      <h2>Каталог квестов</h2>
+      <div class="catalog-controls">
+        <!-- Сортировка -->
+        <div class="sort-container">
+          <label for="sort-select">Сортировка:</label>
+          <select id="sort-select" name="sort" class="sort-select">
+            <option value="title_asc" {% if request.query_params.get('sort') == 'title_asc' %}selected{% endif %}>От А до Я</option>
+            <option value="title_desc" {% if request.query_params.get('sort') == 'title_desc' %}selected{% endif %}>От Я до А</option>
+            <option value="price_low" {% if request.query_params.get('sort') == 'price_low' %}selected{% endif %}>Сначала дешевые</option>
+            <option value="price_high" {% if request.query_params.get('sort') == 'price_high' %}selected{% endif %}>Сначала дорогие</option>
+          </select>
+        </div>
 
-    <!-- Сортировка -->
-    <div class="sort-container">
-      <label for="sort-select">Сортировка:</label>
-      <select id="sort-select" name="sort" class="sort-select">
-        <option value="title_asc" {% if request.query_params.get('sort') == 'title_asc' %}selected{% endif %}>От А до Я</option>
-        <option value="title_desc" {% if request.query_params.get('sort') == 'title_desc' %}selected{% endif %}>От Я до А</option>
-        <option value="price_low" {% if request.query_params.get('sort') == 'price_low' %}selected{% endif %}>Сначала дешевые</option>
-        <option value="price_high" {% if request.query_params.get('sort') == 'price_high' %}selected{% endif %}>Сначала дорогие</option>
-      </select>
+        <!-- Кнопки управления (только для админа) -->
+        {% if user and user.is_admin %}
+        <div class="admin-controls">
+          <a href="/admin/add" class="btn">Добавить квест</a>
+          <a href="/admin" class="btn outline">Редактировать квесты</a>
+        </div>
+        {% endif %}
+      </div>
     </div>
 
-    <!-- Кнопки управления (только для админа) -->
-    {% if user and user.is_admin %}
-    <div class="admin-controls">
-      <a href="/admin/add" class="btn">Добавить квест</a>
-      <a href="/admin" class="btn outline">Редактировать квесты</a>
-    </div>
-    {% endif %}
-
-     <!-- Сетка квестов - АДАПТИВНАЯ -->
+    <!-- Сетка квестов -->
     <div class="cards-grid" id="quests-grid">
       {% include "_quest_cards.html" %}
     </div>

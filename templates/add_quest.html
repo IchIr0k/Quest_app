@@ -47,8 +47,18 @@
       <input type="number" name="price" min="0" value="2000" required>
     </label>
 
-    <label>Изображение<br>
-      <input type="file" name="image" accept="image/*">
+    <label>Изображение квеста<br>
+        <div class="image-upload-container">
+            <input type="file" name="image" id="imageInput" accept="image/*" style="display: none;">
+            <button type="button" class="btn outline" onclick="document.getElementById('imageInput').click()">
+                Выбрать файл
+            </button>
+            <button type="button" class="btn outline" onclick="pasteFromClipboard()">
+                Вставить из буфера обмена
+            </button>
+            <div id="imagePreview" style="margin-top: 10px;"></div>
+            <input type="hidden" name="clipboard_image" id="clipboardImage">
+        </div>
     </label>
 
     <button type="submit" class="btn">Добавить квест</button>
@@ -101,6 +111,78 @@
 .checkbox-group input[type="checkbox"] {
   width: auto;
   margin-right: 10px;
+}
+</style>
+
+<script>
+let clipboardImageData = null;
+
+// Обработка выбора файла
+document.getElementById('imageInput').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        previewImage(file);
+    }
+});
+
+// Вставка из буфера обмена
+async function pasteFromClipboard() {
+    try {
+        const clipboardItems = await navigator.clipboard.read();
+        for (const item of clipboardItems) {
+            for (const type of item.types) {
+                if (type.startsWith('image/')) {
+                    const blob = await item.getType(type);
+                    previewImage(blob);
+                    break;
+                }
+            }
+        }
+    } catch (err) {
+        // Если Clipboard API не доступен, показываем альтернативный способ
+        alert('Вставка из буфера обмена не поддерживается в этом браузере. Используйте Ctrl+V в поле выбора файла.');
+    }
+}
+
+// Превью изображения
+function previewImage(blob) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const preview = document.getElementById('imagePreview');
+        preview.innerHTML = `<img src="${e.target.result}" style="max-width: 200px; max-height: 150px; margin-top: 10px;">`;
+
+        // Сохраняем данные изображения для отправки
+        clipboardImageData = e.target.result;
+        document.getElementById('clipboardImage').value = e.target.result;
+    };
+    reader.readAsDataURL(blob);
+}
+
+// Обработка Ctrl+V для вставки изображения
+document.addEventListener('paste', function(e) {
+    const items = e.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+            const blob = items[i].getAsFile();
+            previewImage(blob);
+            e.preventDefault();
+            break;
+        }
+    }
+});
+</script>
+
+<style>
+.image-upload-container {
+    background: var(--panel);
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #39417b;
+}
+
+.image-upload-container .btn {
+    margin-right: 10px;
+    margin-bottom: 10px;
 }
 </style>
 {% endblock %}

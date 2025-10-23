@@ -2,10 +2,11 @@
   {% for quest in quests %}
   <div class="card">
     {% if quest.image_path %}
-    <img src="/static/{{ quest.image_path }}" alt="{{ quest.title }}">
+    <img src="/static/{{ quest.image_path }}" alt="{{ quest.title }}" loading="lazy">
     {% else %}
-    <div class="card-placeholder"></div>
+    <div class="card-placeholder">🕵️‍♂️</div>
     {% endif %}
+
     <h4>{{ quest.title }}</h4>
     <p class="meta">{{ quest.genre }} • {{ quest.difficulty }}</p>
 
@@ -13,7 +14,8 @@
       <span class="price">{{ quest.price }}₽</span>
     </div>
 
-    <p class="desc">{{ quest.description[:100] }}{% if quest.description|length > 100 %}...{% endif %}</p>
+    <p class="desc">{{ quest.description[:110] }}{% if quest.description|length > 110 %}...{% endif %}</p>
+
     <div class="card-actions">
       <a href="/quest/{{ quest.id }}" class="btn">Подробнее</a>
     </div>
